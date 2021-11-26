@@ -55,5 +55,5 @@ _pycache_/
 *.py[cod]
 *$py.class
 
-
+*.sqlite3
 db.sqlite3
