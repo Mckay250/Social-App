@@ -1,91 +1,144 @@
-from django.http import response
-from rest_framework import serializers
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.exceptions import AuthenticationFailed
 from rest_framework import status
-from .serializers import UserSerializer
-from .models import User
+from rest_framework.permissions import IsAuthenticated
+from .serializers import UserPostDetailedSerializer, UserPostSerializer, UserSerializer
+from .models import UserPost, Like
 from ipware import get_client_ip
 
 
 class SignUpView(APIView):
+
     def post(self, request):
-        client_ip = get_client_ip(request)
+        client_ip, _ = get_client_ip(request)
         if client_ip is not None:
             request.data['ip_address'] = client_ip
         serializer = UserSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-        
-# class LoginView(APIView):
-#     def post(self, request):
-#         email = request.data['email']
-#         password = request.data['password']
-
-#         # fetch user from the datastore
-#         user = User.objects.filter(email=email).first()
-
-#         # raise auth failed exception if user is not found
-#         if user is None:
-#             raise AuthenticationFailed('Invalid login credentials')
-#         # raise auth failed exceprion if password is wrong
-#         if not user.check_password(password):
-#             raise AuthenticationFailed('Invalid login credentials')
-
-#         # create jwt token
-#         payload = {
-#             'id' : user.id,
-#             'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=40),
-#             'iat': datetime.datetime.utcnow()
-#         }
-#         token = encode_jwt(payload=payload)
-
-#         # initialize response
-#         response = Response({'message': 'Login Successful'})
-
-#         # set token to response as cookie
-#         response.set_cookie(key='jwt', value=token, httponly=True)
-
-#         return response
+        return get_response(message='successful', status=status.HTTP_201_CREATED)
 
 
 class UserView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
+        user = request.user
+        serializer = UserSerializer(user)    
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
-        user = User.objects.get(id=payload['id'])
-        serializer = UserSerializer(user)
 
-        return Response(serializer.data)
+class CreatePostView(APIView):
+    permission_classes = [IsAuthenticated]
 
-        
-class LogoutView(APIView):
     def post(self, request):
-        response = Response()
-        response.delete_cookie('jwt')
-        response.data = {
-            'message': 'success'
-        }
-        return response
+        user = request.user
+        serializer = UserPostSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(user=user)
+        return get_response('Success', status=status.HTTP_201_CREATED)
 
 
+class GetPostView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, id):
+        post = UserPost.objects.filter(id=id, deleted=False).first()
+        if post is None:
+            return get_response('Post not found', status=status.HTTP_404_NOT_FOUND)
+        serializer = UserPostDetailedSerializer(post)
+        return Response(serializer.data)
+    
+
+class ListPostView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        queryset = UserPost.objects.filter(deleted=False)
+        data = UserPostDetailedSerializer(queryset, many=True)
+        return Response(data.data, status=status.HTTP_200_OK)
 
 
-def get_client_ip(request):
-    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-    if x_forwarded_for:
-        ip = x_forwarded_for.split(',')[0]
-    else:
-        ip = request.META.get('REMOTE_ADDR')
-    return ip
+class UpdatePostView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request):
+        user = request.user
+        post_id = get_value_from_key_in_request(request, 'postId')
+        if post_id is None:
+            return get_response('postId is required', status=status.HTTP_400_BAD_REQUEST)
+        post = UserPost.objects.filter(id=post_id, deleted=False).first()
+        if post is None:
+            return get_response('Post not found', status=status.HTTP_404_NOT_FOUND)
+        if post.user != user:
+            return get_response("Cannot update another user's post", status=status.HTTP_403_FORBIDDEN)
+        serializer = UserPostSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        post.text = serializer.data['text']
+        post.save(update_fields=['text'])
+        return get_response('Success', status=status.HTTP_200_OK)
 
 
-# # returns a token created from a payload
-# def encode_jwt(payload):
-#     return jwt.encode(payload, JWT_SECRET, algorithm='HS256')
+class DeletePostView(APIView):
+    permission_classes = [IsAuthenticated]
 
-# # returns the payload inside a token
-# def decode_jwt(token):
-#     return jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
+    def delete(self, request):
+        user = request.user
+        post_id = get_value_from_key_in_request(request, 'postId')
+        if post_id is None:
+            return get_response('postId is required', status=status.HTTP_400_BAD_REQUEST)
+        post = UserPost.objects.filter(id=post_id, deleted=False).first()
+        if post is None:
+            return get_response('Post not found', status=status.HTTP_404_NOT_FOUND)
+        if post.user != user:
+            return get_response("Cannot update another user's post", status=status.HTTP_403_FORBIDDEN)
+        post.deleted = True
+        post.save(update_fields=['deleted'])
+        return get_response('Success', status=status.HTTP_200_OK)
+
+
+class LikePostView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        post_id = get_value_from_key_in_request(request, 'postId')
+        if post_id is None:
+            return get_response('postId is required', status=status.HTTP_400_BAD_REQUEST)
+        user = request.user
+        post = UserPost.objects.filter(id=post_id, deleted=False).first()
+        if post is None:
+            return get_response('Post not found', status=status.HTTP_404_NOT_FOUND)
+        like = Like.objects.filter(user=user, post=post_id).first()
+        if like is None:
+            like = Like()
+            like.post = post
+            like.user = user
+        like.deleted = False
+        like.save()
+        return get_response('Success', status=status.HTTP_201_CREATED)
+
+
+class UnlikePostView(APIView):
+    permission_class = [IsAuthenticated]
+
+    def post(self, request):
+        post_id = get_value_from_key_in_request(request, 'postId')
+        if post_id is None:
+            return get_response('postId is required', status=status.HTTP_400_BAD_REQUEST)
+        user = request.user
+        like = Like.objects.filter(user=user, post=post_id, deleted=False).first()
+        if like is not None:
+            like.deleted = True
+            like.save()
+        return Response('Success', status=status.HTTP_200_OK)
+
+
+def get_value_from_key_in_request(request, key : str):
+        try:
+            value = request.data[key]
+        except KeyError:
+            return None
+        return value
+
+def get_response(message: str, status=status.HTTP_200_OK):
+    return Response({'message': f'{message}'}, status=status)

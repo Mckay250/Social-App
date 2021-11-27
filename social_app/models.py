@@ -7,10 +7,11 @@ from django.db.models.deletion import CASCADE
 class BaseModel(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    deleted = models.BooleanField(default=False)
     
     class Meta:
         """Metadata."""
-        
+
         abstract = True
 
 class User(BaseModel, AbstractUser):
@@ -27,10 +28,10 @@ class User(BaseModel, AbstractUser):
     REQUIRED_FIELDS = []
 
 
-class UserPost(BaseModel, models.Model):
+class UserPost(BaseModel):
     user = models.ForeignKey(User, verbose_name='Created By', on_delete=models.CASCADE, related_name='posts')
     text = models.TextField()
-
+    
     def __str__(self) -> str:
         return f"{self.user}'s Post on {self.created_at}"
 
@@ -43,8 +44,8 @@ class UserPost(BaseModel, models.Model):
 class Like(BaseModel):
     """A like on a user's post"""
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='likes')
-    post = models.ForeignKey(UserPost, on_delete=models.CASCADE, related_name='posts')
-    
+    post = models.ForeignKey(UserPost, on_delete=models.CASCADE, related_name='likes')
+
     def __str__(self):
         return f"{self.user} Like"
 

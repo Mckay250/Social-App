@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User
+from .models import Like, User, UserPost
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -22,4 +22,31 @@ class UserSerializer(serializers.ModelSerializer):
             instance.set_password(password)
         instance.save()
         return instance
+
+
+class UserPostSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserPost
+        fields = ['id', 'text']
+        
+
+class LikePostSerializer(serializers.ModelSerializer):
+    user = UserSerializer()
+
+    class Meta:
+        model = Like
+        fileds = ['id', 'user', 'post']
+
+
+class UserPostDetailedSerializer(serializers.ModelSerializer):
+    user = UserSerializer()
+    likes_count = serializers.SerializerMethodField(read_only=True)
+
+    def get_likes_count(self, post):
+        return len([1 for like in post.likes.all() if not like.deleted])
+
+
+    class Meta:
+        model = UserPost
+        fields = ['id', 'text', 'user', 'likes_count']
 
