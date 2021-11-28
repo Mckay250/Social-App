@@ -1,3 +1,4 @@
+from os import stat
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -27,9 +28,7 @@ class SignUpView(APIView):
             return get_response(message="An error occured from our end, we will fix this as soon as possible", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         serializer.save()
         user = serializer.validated_data
-        print('sending task off to celery')
         tasks.populate_user_geo_location_data.delay(user)
-        print('sent task off to celery')
         return get_response(message='successful', status=status.HTTP_201_CREATED)
 
 
@@ -141,9 +140,10 @@ class UnlikePostView(APIView):
             return get_response('postId is required', status=status.HTTP_400_BAD_REQUEST)
         user = request.user
         like = Like.objects.filter(user=user, post=post_id, deleted=False).first()
-        if like is not None:
-            like.deleted = True
-            like.save()
+        if like is None:
+            return Response('Like Not found', status=status.HTTP_404_NOT_FOUND)
+        like.deleted = True
+        like.save()
         return Response('Success', status=status.HTTP_200_OK)
 
 
