@@ -5,24 +5,18 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('social_app', '0003_auto_20211126_0817'),
-    ]
+    dependencies = [("social_app", "0003_auto_20211126_0817")]
 
     operations = [
         migrations.AddField(
-            model_name='like',
-            name='deleted',
-            field=models.BooleanField(default=False),
+            model_name="like", name="deleted", field=models.BooleanField(default=False)
         ),
         migrations.AddField(
-            model_name='user',
-            name='deleted',
-            field=models.BooleanField(default=False),
+            model_name="user", name="deleted", field=models.BooleanField(default=False)
         ),
         migrations.AddField(
-            model_name='userpost',
-            name='deleted',
+            model_name="userpost",
+            name="deleted",
             field=models.BooleanField(default=False),
         ),
     ]
