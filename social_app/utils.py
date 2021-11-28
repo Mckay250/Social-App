@@ -39,7 +39,6 @@ def _get_geolocation_data_with_abstract_api(ip_address):
         raise APIKeyNotFound(message='geolocation api key not found')
     response = requests.get(f"{url}/?api_key={ip_geolocation_api_key}&ip_address={ip_address}")
     data = json.loads(response.content)
-    print('response geo data >>>>> ', data)
     location_data : dict = {}
     location_data['city'] = data['city']
     location_data['region'] = data['region']
@@ -49,7 +48,6 @@ def _get_geolocation_data_with_abstract_api(ip_address):
     location_data['continent_code'] = data['continent_code']
     location_data['longitude'] = data['longitude']
     location_data['latitude'] = data['latitude']
-    print('location_data >>>>>> ', location_data)
     return location_data
 
 def _get_holiday_data_with_abstract_api(country_code: str, year: int, month: int, day: int):
