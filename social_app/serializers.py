@@ -1,7 +1,8 @@
 from rest_framework import serializers
-from .models import Like, User, UserPost
+from .models import Like, User, UserPost, GeoLocationData, UserHolidayData
 
 class UserSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = User
         fields = ['id', 'name', 'email', 'ip_address', 'password']
@@ -25,6 +26,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class UserPostSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = UserPost
         fields = ['id', 'text']
@@ -50,3 +52,18 @@ class UserPostDetailedSerializer(serializers.ModelSerializer):
         model = UserPost
         fields = ['id', 'text', 'user', 'likes_count']
 
+
+class GeoLocationSerializer(serializers.ModelSerializer):
+    user = UserSerializer()
+
+    class Meta:
+        model = GeoLocationData()
+        fields = ['id', 'city', 'region', 'country', 'country_code', 'continent', 'continent_code', 'longitude', 'latitude', 'user']
+
+
+class UserHolidayDataSerializer(serializers.ModelSerializer):
+    user = UserSerializer()
+
+    class Meta:
+        model = UserHolidayData()
+        fields = ['id', 'name', 'description', 'location', 'type', 'date', 'week_day', 'user']

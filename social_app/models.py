@@ -1,8 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
-from django.db.models.deletion import CASCADE
 
-# Create your models here.
 
 class BaseModel(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
@@ -55,3 +53,42 @@ class Like(BaseModel):
         unique_together = (("user", "post"),)
         ordering = ["-created_at"]
 
+
+class GeoLocationData(BaseModel):
+    """Storing a User's geolocation data"""
+    city = models.CharField(max_length=50, null=True)
+    region = models.CharField(max_length=50, null=True)
+    country = models.CharField(max_length=50, null=True)
+    country_code = models.CharField(max_length=5, null=False)
+    continent = models.CharField(max_length=24, null=True)
+    continent_code = models.CharField(max_length=5, null=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True)
+    user = models.OneToOneField(User, unique=True, on_delete=models.CASCADE, related_name='location')
+
+    def __str__(self):
+        return f"{self.user}'s location at sign-up was {self.city}"
+
+    class Meta:
+        """Metadata."""
+
+        ordering = ["-created_at"]
+
+
+class UserHolidayData(BaseModel):
+    """Storing holiday data from the same day and country the client registered from"""
+    name = models.CharField(max_length=50)
+    description = models.TextField()
+    location = models.CharField(max_length=30) 
+    type = models.CharField(max_length=30)
+    date = models.CharField(max_length=20)
+    week_day = models.CharField(max_length=15)
+    user = models.OneToOneField(User, unique=True, on_delete=models.CASCADE, related_name='holiday')
+
+    def __str__(self):
+        return f"It was {self.name} when {self.user} registered"
+
+    class Meta:
+        """Metadata."""
+
+        ordering = ["-created_at"]

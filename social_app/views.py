@@ -2,9 +2,13 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from .serializers import UserPostDetailedSerializer, UserPostSerializer, UserSerializer
+
+from social_app.exceptions import APIKeyNotFound
+from .serializers import UserPostDetailedSerializer, UserPostSerializer, UserSerializer, GeoLocationSerializer, UserHolidayDataSerializer
 from .models import UserPost, Like
+from . import utils 
 from ipware import get_client_ip
+from datetime import date
 
 
 class SignUpView(APIView):
@@ -15,7 +19,16 @@ class SignUpView(APIView):
             request.data['ip_address'] = client_ip
         serializer = UserSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        try:
+            if not utils.is_email_valid_format(request.data['email']):
+                return get_response(message='Invalid email format', status=status.HTTP_400_BAD_REQUEST)
+        except APIKeyNotFound:
+            # alert team of this error
+            return get_response(message="An error occured from our end, we will fix this as soon as possible", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         serializer.save()
+        user = serializer.validated_data
+        print('saved user is ', user)
+        populate_user_geo_location_data(user)
         return get_response(message='successful', status=status.HTTP_201_CREATED)
 
 
@@ -142,3 +155,24 @@ def get_value_from_key_in_request(request, key : str):
 
 def get_response(message: str, status=status.HTTP_200_OK):
     return Response({'message': f'{message}'}, status=status)
+
+
+def populate_user_geo_location_data(user):
+    geolocation_data = utils.get_geolocation_data_from_ip_address(user['ip_address'])
+    print('geolocation data here >>>>>> ', geolocation_data)
+    serializer = GeoLocationSerializer(data=geolocation_data)
+    serializer.is_valid(raise_exception=True)
+    serializer.save(user=user)
+    user_geolocation = serializer.validated_data
+    populate_user_Holiday_data(user_geolocation, user)
+
+
+def populate_user_Holiday_data(geolocation_data, user):
+    todays_date = date.today()
+    holiday_data = utils.get_holiday_data_from_geolocation(geolocation_data['country_code'], todays_date.year, todays_date.month, todays_date.day)
+    if holiday_data is None:
+        return
+    serializer = UserHolidayDataSerializer(data=holiday_data)
+    serializer.is_valid(raise_exception=True)
+    serializer.save(user)
+    return
