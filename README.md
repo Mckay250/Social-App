@@ -1,6 +1,6 @@
 # Social-App
 
-Social app built on Django restframework.
+Social app built with django restframework.
 
 The app consists of the following functionalities:
 
