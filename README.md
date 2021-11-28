@@ -25,7 +25,7 @@ cd into the project directory and run the docker-compose comand below
 # Step 3
 run the docker-compose comand below
   - docker-compose up -d
-the tests are set to run from the docker-compose file
+(the tests are set to run from the docker-compose file)
 
 The application should be running on port 8000 on your host machine
 
