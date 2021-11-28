@@ -1,0 +1,24 @@
+version: '3.9'
+
+services:
+  social_network:
+    container_name: social_network
+    build: .
+    command: bash -c "
+      python manage.py makemigrations
+      &&
+      python manage.py migrate
+      &&
+      python manage.py test social_app.tests
+      &&
+      python manage.py runserver 0.0.0.0:8000
+      &&
+      celery -A social -l INFO"
+    volumes:
+      - ".:/code"
+    ports:
+      - "8000:8000"
+
+  redis:
+    container_name: redis
+    image: redis:latest
